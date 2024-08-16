@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cifrador de Bytes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        button {
+            margin: 10px 0;
+        }
+        #cipherTable {
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cifrador de Bytes</h1>
+    
+    <label for="byteSize">Seleccionar tamaño de bloque:</label>
+    <select id="byteSize">
+        <option value="2">2 bytes</option>
+        <option value="4">4 bytes</option>
+        <option value="8">8 bytes</option>
+        <option value="16">16 bytes</option>
+        <option value="32">32 bytes</option>
+    </select>
+
+    <h2>Cifrar</h2>
+    <textarea id="inputText" placeholder="Ingrese el texto a cifrar"></textarea>
+    <button onclick="encrypt()">Cifrar</button>
+    <h3>Texto Cifrado:</h3>
+    <textarea id="encryptedText" readonly></textarea>
+    <h3>Tabla de Cifrado:</h3>
+    <div id="cipherTable"></div>
+    <button onclick="downloadEncrypted()">Descargar Texto Cifrado</button>
+    <button onclick="downloadCipherTable()">Descargar Tabla de Cifrado</button>
+
+    <h2>Descifrar</h2>
+    <textarea id="inputEncrypted" placeholder="Ingrese el texto cifrado"></textarea>
+    <textarea id="inputCipherTable" placeholder="Ingrese la tabla de cifrado"></textarea>
+    <button onclick="decrypt()">Descifrar</button>
+    <h3>Texto Descifrado:</h3>
+    <textarea id="decryptedText" readonly></textarea>
+
+    <script>
+        let cipherTable = [];
+
+        function generateCipherTable() {
+            cipherTable = Array.from({length: 256}, (_, i) => i);
+            for (let i = cipherTable.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cipherTable[i], cipherTable[j]] = [cipherTable[j], cipherTable[i]];
+            }
+        }
+
+        function encrypt() {
+            const input = document.getElementById('inputText').value;
+            const byteSize = parseInt(document.getElementById('byteSize').value);
+            generateCipherTable();
+            
+            const encoded = encodeText(input, byteSize);
+            
+            document.getElementById('encryptedText').value = encoded.join(',');
+            document.getElementById('cipherTable').textContent = cipherTable.join(',');
+        }
+
+        function encodeText(input, byteSize) {
+            const bytes = new TextEncoder().encode(input);
+            const encoded = [];
+            for (let i = 0; i < bytes.length; i += byteSize) {
+                let value = 0;
+                for (let j = 0; j < byteSize && i + j < bytes.length; j++) {
+                    value = (value << 8) | bytes[i + j];
+                }
+                for (let k = 0; k < byteSize; k++) {
+                    encoded.push(cipherTable[(value >> (8 * (byteSize - 1 - k))) & 0xFF]);
+                }
+            }
+            return encoded;
+        }
+
+        function decrypt() {
+            const encrypted = document.getElementById('inputEncrypted').value.split(',').map(Number);
+            const tableInput = document.getElementById('inputCipherTable').value.split(',').map(Number);
+            const byteSize = parseInt(document.getElementById('byteSize').value);
+            
+            cipherTable = tableInput;
+            const decoded = decodeText(encrypted, byteSize);
+            
+            document.getElementById('decryptedText').value = new TextDecoder().decode(new Uint8Array(decoded));
+        }
+
+        function decodeText(encoded, byteSize) {
+            const decoded = [];
+            for (let i = 0; i < encoded.length; i += byteSize) {
+                let value = 0;
+                for (let j = 0; j < byteSize && i + j < encoded.length; j++) {
+                    value = (value << 8) | cipherTable.indexOf(encoded[i + j]);
+                }
+                for (let k = 0; k < byteSize; k++) {
+                    decoded.push((value >> (8 * (byteSize - 1 - k))) & 0xFF);
+                }
+            }
+            return decoded;
+        }
+
+        function downloadEncrypted() {
+            downloadFile('cifrado.txt', document.getElementById('encryptedText').value);
+        }
+
+        function downloadCipherTable() {
+            downloadFile('tabla_cifrado.txt', document.getElementById('cipherTable').textContent);
+        }
+
+        function downloadFile(filename, text) {
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+    </script>
+</body>
+</html>
